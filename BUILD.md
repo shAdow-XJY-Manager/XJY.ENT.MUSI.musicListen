@@ -1,6 +1,6 @@
 ## pub cmd
-flutter build web --release --base-href /novel_read/
-flutter build web --web-renderer html --release --base-href /music_listen/
+flutter build web --release --base-href /XJY.ENT.MUSI.musicListen/
+flutter build web --no-web-resources-cdn --release --base-href /XJY.ENT.MUSI.musicListen/
 
 > cd /d path
 # pub cmd
