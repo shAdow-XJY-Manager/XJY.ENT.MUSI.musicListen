@@ -19,6 +19,9 @@ dependencies:
 
 #  blur_glass: ^0.0.2
   assets_audio_player: ^3.0.4+1
+  
+  flutter_common:
+    path: ../../../util/pac/flutter_common
 
 dev_dependencies:
   flutter_test:
@@ -34,5 +37,4 @@ flutter:
   assets:
     - assets/music/
     - assets/images/
-
 

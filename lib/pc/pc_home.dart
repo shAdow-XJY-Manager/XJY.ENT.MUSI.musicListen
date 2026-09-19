@@ -1,5 +1,6 @@
 import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_common/flutter_common.dart';
 
 import '../view_model/music_model.dart';
 import '../view_model/set_up_data.dart';
@@ -55,59 +56,53 @@ class _PCHomePageState extends State<PCHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: siteBackground,
       appBar: AppBar(
         title: const Text("Music Directory"),
         centerTitle: true,
-        backgroundColor: Theme.of(context).primaryColor,
         automaticallyImplyLeading: false,
       ),
-      body: GridView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          crossAxisSpacing: 20,
-          mainAxisSpacing: 10,
-          childAspectRatio: 0.8,
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 5,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 20,
+            childAspectRatio: 0.75,
+          ),
+          itemCount: musicList.length,
+          itemBuilder: (context, index) {
+            final music = musicList[index];
+            return MediaCard(
+              assetImage: "assets/images/music_default.png",
+              title: music.songName,
+              subtitle: music.singerName,
+              onTap: () {
+                songOperator(-1);
+                assetsAudioPlayer.playlistPlayAtIndex(index);
+                setState(() {
+                  isPlaying = true;
+                });
+              },
+            );
+          },
         ),
-        itemCount: musicList.length,
-        itemBuilder: (context, index) {
-          return InkWell(
-            focusColor: Colors.transparent,
-            hoverColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            onTap: () {
-              songOperator(-1);
-              assetsAudioPlayer.playlistPlayAtIndex(index);
-              setState(() {
-                isPlaying = true;
-              });
-            },
-            child: Card(
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  image: const DecorationImage(
-                    image: AssetImage("assets/images/music_default.png"),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       ),
-      bottomNavigationBar: BottomAppBar(
-        color: Theme.of(context).primaryColor,
+      bottomNavigationBar: Container(
+        height: 80,
+        decoration: BoxDecoration(
+          color: siteSurface,
+          border: Border(
+            top: BorderSide(color: borderColor, width: 1),
+          ),
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             IconButton(
-              icon: const Icon(Icons.skip_previous),
-              color: Colors.white,
+              icon: const Icon(Icons.skip_previous, size: 32),
+              color: textPrimary,
               onPressed: () {
                 songOperator(1);
                 setState(() {
@@ -115,19 +110,32 @@ class _PCHomePageState extends State<PCHomePage> {
                 });
               },
             ),
-            IconButton(
-              icon: Icon(isPlaying?Icons.pause_circle:Icons.play_arrow),
-              color: Colors.white,
-              onPressed: () {
-                songOperator(0);
-                setState(() {
-                  isPlaying = !isPlaying;
-                });
-              },
+            const SizedBox(width: 16),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: primaryColor,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  isPlaying ? Icons.pause : Icons.play_arrow,
+                  size: 32,
+                ),
+                color: Colors.white,
+                onPressed: () {
+                  songOperator(0);
+                  setState(() {
+                    isPlaying = !isPlaying;
+                  });
+                },
+              ),
             ),
+            const SizedBox(width: 16),
             IconButton(
-              icon: const Icon(Icons.skip_next),
-              color: Colors.white,
+              icon: const Icon(Icons.skip_next, size: 32),
+              color: textPrimary,
               onPressed: () {
                 songOperator(2);
                 setState(() {
