@@ -13,7 +13,6 @@ final routes = {
 
 Route<dynamic>? pcGenerateRoute(RouteSettings settings) {
   final String? name = settings.name;
-  final Object? arguments = settings.arguments;
 
   switch (name) {
     case '/':
