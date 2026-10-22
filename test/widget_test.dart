@@ -15,8 +15,11 @@ html.AudioElement player(WidgetTester tester) =>
     (tester.state(find.byType(MusicDesk)) as dynamic).audio
         as html.AudioElement;
 
-Future<void> mount(WidgetTester tester,
-    {double width = 1280, double height = 1200}) async {
+Future<void> mount(
+  WidgetTester tester, {
+  double width = 1280,
+  double height = 1200,
+}) async {
   addTearDown(() async {
     await tester.pumpWidget(const SizedBox.shrink());
     html.window.localStorage.remove(progressKey);
@@ -28,7 +31,6 @@ Future<void> mount(WidgetTester tester,
 }
 
 void main() {
-
   setUp(() => html.window.localStorage.remove(progressKey));
 
   for (final width in [390.0, 768.0, 1280.0]) {
@@ -59,11 +61,13 @@ void main() {
     expect(audio.volume, closeTo(.4, .001));
     expect(audio.src, Uri.base.resolve(bundledTracks[2].url).toString());
     expect(
-        tester
-            .widget<ListTile>(
-                find.widgetWithText(ListTile, bundledTracks[2].title))
-            .selected,
-        isTrue);
+      tester
+          .widget<ListTile>(
+            find.widgetWithText(ListTile, bundledTracks[2].title),
+          )
+          .selected,
+      isTrue,
+    );
     expect(find.text('暂停'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -79,7 +83,16 @@ void main() {
     expect(player(tester).getAttribute('src'), isNull);
     expect(player(tester).volume, 1);
     expect(player(tester).paused, isTrue);
-    expect(tester.widget<IconButton>(find.byWidgetPredicate((w) => w is IconButton && w.tooltip == '上一首')).onPressed, isNull);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (w) => w is IconButton && w.tooltip == '上一首',
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
   });
 
   testWidgets('损坏播放记录不启动音频且显示恢复路径', (tester) async {
@@ -110,8 +123,9 @@ void main() {
     await tester.pumpAndSettle();
     final dialog = find.byType(AlertDialog);
     await tester.enterText(
-        find.descendant(of: dialog, matching: find.byType(TextField)),
-        'http://example.invalid/audio.mp3');
+      find.descendant(of: dialog, matching: find.byType(TextField)),
+      'http://example.invalid/audio.mp3',
+    );
     await tester.tap(find.text('添加并播放'));
     await tester.pumpAndSettle();
     expect(find.text('请输入完整 HTTPS 音频直链。'), findsOneWidget);
@@ -128,6 +142,8 @@ void main() {
       'volume': .4,
     });
     await mount(tester);
+    await tester.tap(find.byTooltip('音量与播放顺序'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('静音'));
     await tester.pump();
     expect(player(tester).volume, 0);
@@ -138,5 +154,35 @@ void main() {
     expect(player(tester).volume, closeTo(.75, .001));
     expect(jsonDecode(html.window.localStorage[progressKey]!)['volume'], .75);
     expect(player(tester).paused, isTrue);
+  });
+
+  testWidgets('窄屏播放设置可切换顺序并返回，始终不自动播放', (tester) async {
+    await mount(tester, width: 390, height: 700);
+    await tester.tap(find.byTooltip('音量与播放顺序'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('单曲循环').last);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<DropdownButton<int>>(find.byType(DropdownButton<int>))
+          .value,
+      2,
+    );
+    expect(player(tester).paused, isTrue);
+    await tester.tap(find.text('完成'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    await tester.tap(find.byTooltip('音量与播放顺序'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<DropdownButton<int>>(find.byType(DropdownButton<int>))
+          .value,
+      2,
+    );
+    expect(player(tester).paused, isTrue);
+    expect(tester.takeException(), isNull);
   });
 }
