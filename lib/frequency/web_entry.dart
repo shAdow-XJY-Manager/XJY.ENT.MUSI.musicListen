@@ -215,6 +215,9 @@ class _MusicDeskState extends State<MusicDesk> {
     if (searchFocus.hasFocus || event is! KeyDownEvent)
       return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.space) {
+      // Descendant controls use Space for their own ActivateIntent. Let their
+      // event reach WidgetsApp's shortcuts instead of toggling the player.
+      if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
       unawaited(toggle());
       return KeyEventResult.handled;
     }
@@ -487,209 +490,205 @@ class _MusicDeskState extends State<MusicDesk> {
       ],
     );
     return Focus(
+      debugLabel: 'music-page-shortcuts',
+      autofocus: true,
       onKeyEvent: handleShortcut,
-      child: Focus(
-        autofocus: true,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('声音播放'),
-            actions: [
-              IconButton(
-                tooltip: '打开本地音频',
-                onPressed: addFile,
-                icon: const Icon(Icons.audio_file_outlined),
-              ),
-              IconButton(
-                tooltip: '添加网络音频',
-                onPressed: addUrl,
-                icon: const Icon(Icons.link),
-              ),
-              const SizedBox(width: 12),
-            ],
-          ),
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: ListView(
-                padding: EdgeInsets.all(compact ? 20 : 32),
-                children: [
-                  const Text(
-                    '频率站 / 声音',
-                    style: TextStyle(
-                      color: FrequencyPalette.accent,
-                      fontSize: 12,
-                      letterSpacing: 1.5,
-                    ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('声音播放'),
+          actions: [
+            IconButton(
+              tooltip: '打开本地音频',
+              onPressed: addFile,
+              icon: const Icon(Icons.audio_file_outlined),
+            ),
+            IconButton(
+              tooltip: '添加网络音频',
+              onPressed: addUrl,
+              icon: const Icon(Icons.link),
+            ),
+            const SizedBox(width: 12),
+          ],
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: ListView(
+              padding: EdgeInsets.all(compact ? 20 : 32),
+              children: [
+                const Text(
+                  '频率站 / 声音',
+                  style: TextStyle(
+                    color: FrequencyPalette.accent,
+                    fontSize: 12,
+                    letterSpacing: 1.5,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '给此刻一点声音',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '给此刻一点声音',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '选择曲目，或打开自己的音频。空格播放 / 暂停，Alt + 左右切歌。',
-                    style: TextStyle(color: FrequencyPalette.muted),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '选择曲目，或打开自己的音频。空格播放 / 暂停，Alt + 左右切歌。',
+                  style: TextStyle(color: FrequencyPalette.muted),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  focusNode: searchFocus,
+                  decoration: const InputDecoration(
+                    labelText: '查找曲名或音乐人',
+                    prefixIcon: Icon(Icons.search),
                   ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    focusNode: searchFocus,
-                    decoration: const InputDecoration(
-                      labelText: '查找曲名或音乐人',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onChanged: (v) => setState(() => query = v),
+                  onChanged: (v) => setState(() => query = v),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  '播放列表 · ${visible.length}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    '播放列表 · ${visible.length}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+                ),
+                const SizedBox(height: 12),
+                if (visible.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text('没有匹配曲目。换一个词或添加自己的音频。'),
                   ),
-                  const SizedBox(height: 12),
-                  if (visible.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text('没有匹配曲目。换一个词或添加自己的音频。'),
+                for (final entry in visible)
+                  Ink(
+                    decoration: BoxDecoration(
+                      color: selected == entry.key
+                          ? FrequencyPalette.selected
+                          : Colors.transparent,
+                      border: const Border(
+                        bottom: BorderSide(color: FrequencyPalette.border),
+                      ),
                     ),
-                  for (final entry in visible)
-                    Ink(
-                      decoration: BoxDecoration(
+                    child: ListTile(
+                      selected: selected == entry.key,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      leading: Icon(
+                        selected == entry.key && playing
+                            ? Icons.graphic_eq
+                            : Icons.music_note_outlined,
                         color: selected == entry.key
-                            ? FrequencyPalette.selected
-                            : Colors.transparent,
-                        border: const Border(
-                          bottom: BorderSide(color: FrequencyPalette.border),
+                            ? FrequencyPalette.accent
+                            : FrequencyPalette.muted,
+                      ),
+                      title: Text(
+                        entry.value.title,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${entry.value.artist} · ${entry.value.source}',
+                        style: const TextStyle(
+                          color: FrequencyPalette.muted,
+                          fontSize: 13,
+                          height: 1.5,
                         ),
                       ),
-                      child: ListTile(
-                        selected: selected == entry.key,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        leading: Icon(
-                          selected == entry.key && playing
-                              ? Icons.graphic_eq
-                              : Icons.music_note_outlined,
-                          color: selected == entry.key
-                              ? FrequencyPalette.accent
-                              : FrequencyPalette.muted,
-                        ),
-                        title: Text(
-                          entry.value.title,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          '${entry.value.artist} · ${entry.value.source}',
-                          style: const TextStyle(
-                            color: FrequencyPalette.muted,
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
-                        ),
-                        trailing: IconButton(
-                          tooltip: '播放 ${entry.value.title}',
-                          onPressed: () => choose(entry.key),
-                          icon: const Icon(Icons.play_arrow_rounded),
-                        ),
-                        onTap: () => choose(entry.key),
+                      trailing: IconButton(
+                        tooltip: '播放 ${entry.value.title}',
+                        onPressed: () => choose(entry.key),
+                        icon: const Icon(Icons.play_arrow_rounded),
                       ),
-                    ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '用户文件和新增直链仅在本次会话中保留；刷新后恢复内置曲目的记录，不自动播放。',
-                    style: TextStyle(
-                      color: FrequencyPalette.muted,
-                      fontSize: 13,
+                      onTap: () => choose(entry.key),
                     ),
                   ),
-                ],
-              ),
+                const SizedBox(height: 20),
+                const Text(
+                  '用户文件和新增直链仅在本次会话中保留；刷新后恢复内置曲目的记录，不自动播放。',
+                  style: TextStyle(color: FrequencyPalette.muted, fontSize: 13),
+                ),
+              ],
             ),
           ),
-          bottomNavigationBar: SafeArea(
-            top: false,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: FrequencyPalette.surface,
-                border: Border(top: BorderSide(color: FrequencyPalette.border)),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: compact ? 16 : 28,
-                vertical: 10,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (error.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          error,
-                          style: const TextStyle(
-                            color: FrequencyPalette.error,
-                            fontSize: 13,
-                          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: FrequencyPalette.surface,
+              border: Border(top: BorderSide(color: FrequencyPalette.border)),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 16 : 28,
+              vertical: 10,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (error.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        error,
+                        style: const TextStyle(
+                          color: FrequencyPalette.error,
+                          fontSize: 13,
                         ),
                       ),
                     ),
-                  if (compact ||
-                      MediaQuery.textScalerOf(context).scale(16) > 24) ...[
-                    trackInfo,
-                    const SizedBox(height: 8),
-                    _controls(),
-                  ] else
-                    Row(
-                      children: [
-                        Expanded(child: trackInfo),
-                        const SizedBox(width: 24),
-                        _controls(),
-                      ],
-                    ),
+                  ),
+                if (compact ||
+                    MediaQuery.textScalerOf(context).scale(16) > 24) ...[
+                  trackInfo,
+                  const SizedBox(height: 8),
+                  _controls(),
+                ] else
                   Row(
                     children: [
-                      Text(
-                        time(position),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: FrequencyPalette.muted,
-                        ),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          min: 0,
-                          max: duration > 0 ? duration : 1,
-                          value: position.clamp(0, duration > 0 ? duration : 1),
-                          onChanged: duration > 0
-                              ? (v) {
-                                  audio.currentTime = v;
-                                  setState(() => position = v);
-                                  save();
-                                }
-                              : null,
-                          semanticFormatterCallback: (v) => time(v),
-                        ),
-                      ),
-                      Text(
-                        time(duration),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: FrequencyPalette.muted,
-                        ),
-                      ),
+                      Expanded(child: trackInfo),
+                      const SizedBox(width: 24),
+                      _controls(),
                     ],
                   ),
-                ],
-              ),
+                Row(
+                  children: [
+                    Text(
+                      time(position),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: FrequencyPalette.muted,
+                      ),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        min: 0,
+                        max: duration > 0 ? duration : 1,
+                        value: position.clamp(0, duration > 0 ? duration : 1),
+                        onChanged: duration > 0
+                            ? (v) {
+                                audio.currentTime = v;
+                                setState(() => position = v);
+                                save();
+                              }
+                            : null,
+                        semanticFormatterCallback: (v) => time(v),
+                      ),
+                    ),
+                    Text(
+                      time(duration),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: FrequencyPalette.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

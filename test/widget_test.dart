@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:html' as html;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:music_listen/frequency/web_entry.dart';
 
@@ -28,6 +29,26 @@ Future<void> mount(
   await tester.binding.setSurfaceSize(Size(width, height));
   await tester.pumpWidget(const MusicApp());
   await tester.pumpAndSettle();
+}
+
+Future<void> focusWithTab(WidgetTester tester, Finder target) async {
+  final targetElement = tester.element(target);
+  bool focused() {
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context == null) return false;
+    var match = identical(context, targetElement);
+    context.visitAncestorElements((element) {
+      if (identical(element, targetElement)) match = true;
+      return !match;
+    });
+    return match;
+  }
+
+  for (var count = 0; count < 32 && !focused(); count++) {
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+  }
+  expect(focused(), isTrue, reason: 'Tab should reach the requested control');
 }
 
 void main() {
@@ -183,6 +204,74 @@ void main() {
       2,
     );
     expect(player(tester).paused, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final key in [LogicalKeyboardKey.space, LogicalKeyboardKey.enter]) {
+    testWidgets('Tab 到播放设置后 ${key.keyLabel} 打开弹窗且不触发音频', (tester) async {
+      await mount(tester);
+      final settings = find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == '音量与播放顺序',
+      );
+      await focusWithTab(tester, settings);
+      await tester.sendKeyEvent(key);
+      await tester.pumpAndSettle();
+      expect(find.text('播放设置'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(player(tester).getAttribute('src'), isNull);
+      expect(player(tester).paused, isTrue);
+      expect(player(tester).played.length, 0);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('搜索输入空格由文本输入处理，不触发全页播放快捷键', (tester) async {
+    await mount(tester);
+    final search = find.byType(TextField);
+    await tester.enterText(search, 'small');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: 'small guide',
+        selection: TextSelection.collapsed(offset: 11),
+      ),
+    );
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+      'small guide',
+    );
+    expect(find.widgetWithText(ListTile, 'Small Guide'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Beyond the Happy End'), findsNothing);
+    expect(player(tester).getAttribute('src'), isNull);
+    expect(player(tester).paused, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('页面背景焦点仍支持空格播放与 Alt 方向键切歌', (tester) async {
+    await mount(tester);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'music-page-shortcuts',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(
+      player(tester).src,
+      Uri.base.resolve(bundledTracks[0].url).toString(),
+    );
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pump();
+    expect(
+      player(tester).src,
+      Uri.base.resolve(bundledTracks[1].url).toString(),
+    );
     expect(tester.takeException(), isNull);
   });
 }
